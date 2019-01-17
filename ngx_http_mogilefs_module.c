@@ -464,6 +464,9 @@ ngx_http_mogilefs_put_handler(ngx_http_request_t *r)
         return NGX_DONE;
     }
 
+    /* HACK: ngx_http_read_client_request_body disables writes, but we need them */
+    r->write_event_handler = ngx_http_core_run_phases;
+
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "mogilefs put handler state: %ui, status: %i", ctx->state, ctx->status);
 
@@ -1062,6 +1065,10 @@ ngx_http_mogilefs_process_ok_response(ngx_http_request_t *r,
     r->headers_out.content_length_n = 0;
     u->headers_in.status_n = 200;
     u->state->status = 200;
+    /* Prevents nginx from waiting for a body that will never come */
+    if (ctx->cmd->method == NGX_HTTP_PUT) {
+        r->header_only = 1;
+    }
 
     // Return no content
     u->buffer.pos = u->buffer.pos;
